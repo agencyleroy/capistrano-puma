@@ -1,1 +1,1 @@
-load File.expand_path('../tasks/puma.cap', __FILE__)
+load File.expand_path('../tasks/puma.rb', __FILE__)

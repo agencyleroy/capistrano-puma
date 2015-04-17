@@ -13,10 +13,10 @@ end
 }
 
 server {
-  listen 80;
+  listen 80 default deferred;
 
   client_max_body_size 4G;
-  keepalive_timeout 10;
+  keepalive_timeout 30;
 
   error_page 500 502 504 /500.html;
   error_page 503 @503;
@@ -39,14 +39,21 @@ server {
     gzip_static on;
     expires max;
     add_header Cache-Control public;
+    add_header Access-Control-Allow-Origin *;
   }
 
-  location = /50x.html {
-    root html;
+  # Favicon
+  location ~* \.ico$ {
+    expires 1w;
+    access_log off;
+    add_header Cache-Control "public";
   }
 
-  location = /404.html {
-    root html;
+  # Media: images, video, audio, HTC, WebFonts
+  location ~* \.(?:jpg|jpeg|gif|png|ico|gz|svg|svgz|ttf|otf|woff|eot|mp4|ogg|ogv|webm)$ {
+      expires 1M;
+    access_log off;
+    add_header Cache-Control "public";
   }
 
   location @503 {
@@ -63,9 +70,5 @@ server {
 
   if (-f $document_root/system/maintenance.html) {
     return 503;
-  }
-
-  location ~ \.(php|html)$ {
-    return 405;
   }
 }

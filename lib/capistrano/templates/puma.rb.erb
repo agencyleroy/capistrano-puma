@@ -3,9 +3,6 @@
 directory '<%= current_path %>'
 rackup "<%=fetch(:puma_rackup)%>"
 environment '<%= fetch(:puma_env) %>'
-<% if fetch(:puma_tag) %>
-  tag '<%= fetch(:puma_tag)%>'
-<% end %>
 pidfile "<%=fetch(:puma_pid)%>"
 state_path "<%=fetch(:puma_state)%>"
 stdout_redirect '<%=fetch(:puma_access_log)%>', '<%=fetch(:puma_error_log)%>', true
@@ -34,6 +31,10 @@ prune_bundler
 on_worker_boot do
   ActiveSupport.on_load(:active_record) do
     ActiveRecord::Base.establish_connection
+  end
+  # Reload redis
+  if defined?(Resque)
+     Resque.redis = ENV["<redis-uri>"] || "redis://127.0.0.1:6379"
   end
 end
 <% end %>

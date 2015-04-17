@@ -5,7 +5,7 @@ module Capistrano
         desc "Create local nginx and puma configuration files for customization"
         source_root File.expand_path('../templates', __FILE__)
         argument :templates_path, :type => :string,
-          :default => "config/deploy/templates",
+          :default => "config/recepies/templates",
           :banner => "path to templates"
 
         def copy_template
