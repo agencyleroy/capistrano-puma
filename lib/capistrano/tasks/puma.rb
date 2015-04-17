@@ -2,7 +2,7 @@
 Capistrano::Configuration.instance.load do
   _cset(:puma_default_hooks, true)
   _cset(:puma_role, :app)
-  _cset(:puma_env, -> { fetch(:rails_env) })
+  _cset(:puma_env, fetch(:rails_env))
   # Configure "min" to be the minimum number of threads to use to answer
   # requests and "max" the maximum.
   _cset(:puma_threads, [0, 16])
@@ -40,18 +40,20 @@ Capistrano::Configuration.instance.load do
     before 'deploy:starting', 'deploy:check_puma_hooks'
 
     # Puma commands
-    %w[start stop upgrade restart].each do |command|
+    %w[start stop upgrade].each do |command|
       desc "#{command} puma server"
       task command, roles: :app, except: {no_release: true} do
         after "deploy:#{command}", "puma:#{command}"
       end
     end
 
+    after 'deploy:restart', 'puma:smart_restart'
+
     task :symlink_puma_pids, roles: :app do
-      run "ln -nfs #{release_path}/tmp/pids #{shared_path}/tmp/pids"
-      run "ln -nfs #{release_path}/tmp/sockets #{shared_path}/tmp/sockets"
+      run "cd #{release_path}/tmp; ln -nsf #{shared_path}/tmp/pids ."
+      run "cd #{release_path}/tmp; ln -nsf #{shared_path}/tmp/sockets ."
     end
-    after "deploy:finalize_update", "deploy:symlink_puma_pids"
+    after "deploy:create_symlink", "deploy:symlink_puma_pids"
   end
 
   namespace :puma do
@@ -88,12 +90,12 @@ Capistrano::Configuration.instance.load do
           warn '  * Puma not running'
           running = false
         end
-        if running == true && run("kill -0 $( cat #{fetch(:puma_pid)} )")
+        if running == true
           run "cd #{current_path} && RAILS_ENV=#{fetch(:puma_env)} bundle exec pumactl -S #{fetch(:puma_state)} #{command}"
           running = false
         elsif running == true
           # delete invalid pid file , process is not running.
-          run "rm #{fetch(:puma_pid)} "
+          # run "rm #{fetch(:puma_pid)} "
         end
       end
     end
@@ -101,11 +103,9 @@ Capistrano::Configuration.instance.load do
     %w[phased-restart restart].map do |command|
       desc "#{command} puma"
       task command, roles: fetch(:puma_role) do
-        if (run("test -f #{fetch(:puma_pid)}") rescue false) && (run("test kill -0 $( cat #{fetch(:puma_pid)} )") rescue false)
-          # NOTE pid exist but state file is nonsense, so ignore that case
+        begin
           run "cd #{current_path} && RAILS_ENV=#{fetch(:puma_env)} bundle exec pumactl -S #{fetch(:puma_state)} #{command}"
-        else
-          # Puma is not running or state file is not present : Run it
+        rescue
           puma.start
         end
       end
